@@ -3,6 +3,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 
 import javafx.application.Application;
 import javafx.event.ActionEvent;
@@ -11,14 +13,15 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 public class ChatClient extends Application {
@@ -27,6 +30,9 @@ public class ChatClient extends Application {
 	BufferedReader reader;
 	PrintWriter writer;
 	TextArea conversationTextArea;
+	Calendar calendar;
+	MenuBar menuBar;
+	String nick;
 
 	public void configureCommunication() {
 		try {
@@ -50,37 +56,41 @@ public class ChatClient extends Application {
 		primaryStage.setTitle("JavaFX Chat");
 		GridPane grid = new GridPane();
 		grid.setAlignment(Pos.TOP_CENTER);
-		grid.setHgap(10);
+		grid.setHgap(0);
 		grid.setVgap(10);
-		grid.setPadding(new Insets(25, 25, 25, 25));
-		Text sceneTitle = new Text("Welcome");
-		sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-		grid.add(sceneTitle, 0, 0, 2, 1);
+		grid.setPadding(new Insets(0, 0, 0, 0));
+		menuBar = new MenuBar();
+		grid.add(menuBar, 1, 0);
+		menuBar.prefWidthProperty().bind(primaryStage.widthProperty());
 
-		Label conversationLabel = new Label("Conversation:");
-		grid.add(conversationLabel, 0, 1);
+		Menu propMenu = new Menu("Properties");
+		MenuItem nickItem = new MenuItem("Nickname");
+		menuBar.getMenus().addAll(propMenu);
+		propMenu.getItems().addAll(nickItem);
+
 		conversationTextArea = new TextArea();
 		grid.add(conversationTextArea, 1, 1);
 		conversationTextArea.setPrefRowCount(5);
 		conversationTextArea.setPrefColumnCount(5);
 		conversationTextArea.setWrapText(true);
 		conversationTextArea.setEditable(false);
+		conversationTextArea.setPromptText("Conversation");
+		conversationTextArea.setFocusTraversable(false);
 
-		Label messageLabel = new Label("Type your message:");
-		grid.add(messageLabel, 0, 2);
 		TextField messageTextField = new TextField();
 		grid.add(messageTextField, 1, 2);
+		messageTextField.setPromptText("Type your message: ");
 
 		Button button = new Button("Send");
 		HBox hbButton = new HBox(10);
-		hbButton.setAlignment(Pos.BOTTOM_RIGHT);
+		hbButton.setAlignment(Pos.BOTTOM_CENTER);
 		hbButton.getChildren().add(button);
 		grid.add(hbButton, 1, 4);
 
 		button.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
-			public void handle(ActionEvent e) {
+			public void handle(ActionEvent actionEvent) {
 				String message = messageTextField.getText();
 				writer.println(message);
 				writer.flush();
@@ -88,9 +98,54 @@ public class ChatClient extends Application {
 			}
 		});
 
-		Scene scene = new Scene(grid, 330, 275);
+		messageTextField.setOnKeyPressed(new EventHandler<KeyEvent>() {
+
+			@Override
+			public void handle(KeyEvent keyEvent) {
+				if (keyEvent.getCode().equals(KeyCode.ENTER)) {
+					String message = messageTextField.getText();
+					writer.println(message);
+					writer.flush();
+					messageTextField.clear();
+				}
+			}
+		});
+
+		nickItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			public void handle(ActionEvent nickEvent) {
+				Stage stage = new Stage();
+				stage.setTitle("Change your nickname");
+				GridPane grid = new GridPane();
+				grid.setAlignment(Pos.CENTER);
+				grid.setHgap(10);
+				grid.setVgap(10);
+				grid.setPadding(new Insets(25, 25, 25, 25));
+				TextField userTextField = new TextField();
+				grid.add(userTextField, 1, 1);
+
+				userTextField.setOnKeyPressed(new EventHandler<KeyEvent>() {
+
+					@Override
+					public void handle(KeyEvent keyEvent) {
+						if (keyEvent.getCode().equals(KeyCode.ENTER)) {
+							nick = userTextField.getText();
+							System.out.println("Nickname was changed to: " + nick);
+							stage.close();
+						}
+					}
+				});
+
+				Scene scene = new Scene(grid, 300, 275);
+				stage.setScene(scene);
+				stage.show();
+			}
+		});
+
+		Scene scene = new Scene(grid, 350, 300);
 		primaryStage.setScene(scene);
 		primaryStage.show();
+
 	}
 
 	public static void main(String[] args) {
@@ -102,8 +157,12 @@ public class ChatClient extends Application {
 			String receivedMessage;
 			try {
 				while ((receivedMessage = reader.readLine()) != null) {
+					calendar = GregorianCalendar.getInstance();
+					int hour = calendar.get(Calendar.HOUR_OF_DAY);
+					int minute = calendar.get(Calendar.MINUTE);
 					System.out.println("Received message: " + receivedMessage);
-					conversationTextArea.appendText(receivedMessage + "\n" );
+					conversationTextArea
+							.appendText("[" + hour + ":" + minute + "]" + nick + " wrote: " + receivedMessage + "\n");
 				}
 			} catch (Exception ex) {
 				ex.printStackTrace();
