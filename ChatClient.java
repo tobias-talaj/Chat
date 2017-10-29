@@ -1,3 +1,5 @@
+package Chat;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,9 +32,15 @@ public class ChatClient extends Application {
 	BufferedReader reader;
 	PrintWriter writer;
 	TextArea conversationTextArea;
-	Calendar calendar;
+	TextArea historyTextArea;
 	MenuBar menuBar;
-	String nick;
+	Archive arch = new Archive();
+	String nick = "Undefined Name";
+	
+	Calendar calendar = GregorianCalendar.getInstance();
+	public int hour = calendar.get(Calendar.HOUR_OF_DAY);
+	public int minute = calendar.get(Calendar.MINUTE);
+	String time = String.format("%02d:%02d", hour, minute);
 
 	public void configureCommunication() {
 		try {
@@ -63,10 +71,11 @@ public class ChatClient extends Application {
 		grid.add(menuBar, 1, 0);
 		menuBar.prefWidthProperty().bind(primaryStage.widthProperty());
 
-		Menu propMenu = new Menu("Properties");
-		MenuItem nickItem = new MenuItem("Nickname");
+		Menu propMenu = new Menu("Menu");
+		MenuItem historyItem = new MenuItem("Show conversation history");
+		MenuItem nickItem = new MenuItem("Change nickname");
 		menuBar.getMenus().addAll(propMenu);
-		propMenu.getItems().addAll(nickItem);
+		propMenu.getItems().addAll(nickItem, historyItem);
 
 		conversationTextArea = new TextArea();
 		grid.add(conversationTextArea, 1, 1);
@@ -92,8 +101,10 @@ public class ChatClient extends Application {
 			@Override
 			public void handle(ActionEvent actionEvent) {
 				String message = messageTextField.getText();
+				writer.print(nick + ": ");
 				writer.println(message);
 				writer.flush();
+				arch.insertMessage(nick, message);
 				messageTextField.clear();
 			}
 		});
@@ -104,8 +115,10 @@ public class ChatClient extends Application {
 			public void handle(KeyEvent keyEvent) {
 				if (keyEvent.getCode().equals(KeyCode.ENTER)) {
 					String message = messageTextField.getText();
+					writer.print(nick + ": ");
 					writer.println(message);
 					writer.flush();
+					arch.insertMessage(nick, message);
 					messageTextField.clear();
 				}
 			}
@@ -142,6 +155,31 @@ public class ChatClient extends Application {
 			}
 		});
 
+		historyItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			public void handle(ActionEvent historyEvent) {
+				Stage historyStage = new Stage();
+				historyStage.setTitle("Conversation history");
+				GridPane grid = new GridPane();
+				grid.setAlignment(Pos.CENTER);
+				grid.setHgap(10);
+				grid.setVgap(10);
+				grid.setPadding(new Insets(25, 25, 25, 25));
+				TextArea historyTextArea = new TextArea();
+				grid.add(historyTextArea, 1, 1);
+
+				System.out.println(arch.showHistory() + "\n");
+				historyTextArea.appendText(arch.showHistory() + "\n");
+				historyTextArea.setEditable(false);
+				historyTextArea.setFocusTraversable(false);
+
+				Scene historyScene = new Scene(grid, 300, 275);
+				historyStage.setScene(historyScene);
+				historyStage.show();
+
+			}
+		});
+
 		Scene scene = new Scene(grid, 350, 300);
 		primaryStage.setScene(scene);
 		primaryStage.show();
@@ -157,12 +195,8 @@ public class ChatClient extends Application {
 			String receivedMessage;
 			try {
 				while ((receivedMessage = reader.readLine()) != null) {
-					calendar = GregorianCalendar.getInstance();
-					int hour = calendar.get(Calendar.HOUR_OF_DAY);
-					int minute = calendar.get(Calendar.MINUTE);
 					System.out.println("Received message: " + receivedMessage);
-					conversationTextArea
-							.appendText("[" + hour + ":" + minute + "]" + nick + " wrote: " + receivedMessage + "\n");
+					conversationTextArea.appendText("[" + time + "]" + receivedMessage + "\n");
 				}
 			} catch (Exception ex) {
 				ex.printStackTrace();
