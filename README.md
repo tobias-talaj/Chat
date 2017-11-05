@@ -1,2 +1,2 @@
 # Chat
-A simple chat with conversation history as SQL database
+A simple chat with conversation history as a SQL database
